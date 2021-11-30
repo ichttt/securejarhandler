@@ -187,18 +187,12 @@ public class UnionFileSystem extends FileSystem {
     }
 
     public void checkAccess(final UnionPath p, final AccessMode... modes) throws IOException {
-        try {
-            findFirstFiltered(p).ifPresentOrElse(path-> {
-                try {
-                    path.getFileSystem().provider().checkAccess(path, modes);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            }, ()->{
-                throw new UncheckedIOException("No file found", new NoSuchFileException(p.toString()));
-            });
-        } catch (UncheckedIOException e) {
-            throw e.getCause();
+        var optionalFirstFiltered = findFirstFiltered(p);
+        if (optionalFirstFiltered.isPresent()) {
+            var actualPath = optionalFirstFiltered.get();
+            actualPath.getFileSystem().provider().checkAccess(actualPath, modes);
+        } else {
+            throw new NoSuchFileException(p.toString());
         }
     }
 
@@ -214,20 +208,12 @@ public class UnionFileSystem extends FileSystem {
     }
 
     public SeekableByteChannel newReadByteChannel(final UnionPath path) throws IOException {
-        try {
-            return findFirstFiltered(path)
-                    .map(this::byteChannel)
-                    .orElseThrow(FileNotFoundException::new);
-        } catch (UncheckedIOException ioe) {
-            throw ioe.getCause();
-        }
-    }
-
-    private SeekableByteChannel byteChannel(final Path path) {
-        try {
-            return Files.newByteChannel(path, StandardOpenOption.READ);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        var optionalFirstFiltered = findFirstFiltered(path);
+        if (optionalFirstFiltered.isPresent()) {
+            var actualPath = optionalFirstFiltered.get();
+            return Files.newByteChannel(actualPath, StandardOpenOption.READ);
+        } else {
+            throw new FileNotFoundException();
         }
     }
 
