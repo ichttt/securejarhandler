@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class UnionFileSystem extends FileSystem {
+    public static final String SEPARATOR = "/";
     private static final MethodHandle ZIPFS_EXISTS;
     static {
         try {
@@ -118,7 +119,7 @@ public class UnionFileSystem extends FileSystem {
 
     @Override
     public String getSeparator() {
-        return "/";
+        return SEPARATOR;
     }
 
     @Override

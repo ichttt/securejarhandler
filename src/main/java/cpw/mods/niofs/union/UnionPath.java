@@ -11,9 +11,17 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class UnionPath implements Path {
+    private static final Pattern START_END_SEPARATOR;
+    private static final Pattern DOUBLE_SEPARATOR;
     private final UnionFileSystem fileSystem;
     private final boolean absolute;
     private final String[] pathParts;
+
+    static {
+        var sep = "(?:" + Pattern.quote(UnionFileSystem.SEPARATOR) + ")";
+        START_END_SEPARATOR = Pattern.compile("^" + sep + "*|" + sep + "*$");
+        DOUBLE_SEPARATOR = Pattern.compile(sep + "+(?=" + sep + ")");
+    }
     
     // Store the normalized path after it has been created first
     private UnionPath normalized;
@@ -24,8 +32,8 @@ public class UnionPath implements Path {
             this.absolute = false;
             this.pathParts = new String[0];
         } else {
-            final var longstring = Arrays.stream(pathParts).filter(part -> !part.isEmpty()).collect(Collectors.joining(this.getFileSystem().getSeparator()));
-            this.absolute = longstring.startsWith(this.getFileSystem().getSeparator());
+            final var longstring = Arrays.stream(pathParts).filter(part -> !part.isEmpty()).collect(Collectors.joining(UnionFileSystem.SEPARATOR));
+            this.absolute = longstring.startsWith(UnionFileSystem.SEPARATOR);
             this.pathParts = getPathParts(longstring);
         }
         this.normalized = null;
@@ -47,17 +55,15 @@ public class UnionPath implements Path {
     }
 
     private String[] getPathParts(final String longstring) {
-        var sep = "(?:" + Pattern.quote(this.getFileSystem().getSeparator()) + ")";
-        String pathname = longstring
-                .replace("\\", this.getFileSystem().getSeparator())
-                // remove separators from start and end of longstring
-                .replaceAll("^" + sep + "*|" + sep + "*$", "")
-                // Remove duplicate separators
-                .replaceAll(sep + "+(?=" + sep + ")", "");
+        String pathname = longstring.replace("\\", UnionFileSystem.SEPARATOR);
+        // remove separators from start and end of longstring
+        pathname = START_END_SEPARATOR.matcher(pathname).replaceAll("");
+        // Remove duplicate separators
+        pathname = DOUBLE_SEPARATOR.matcher(pathname).replaceAll("");
         if (pathname.isEmpty())
             return new String[0];
         else
-            return pathname.split(this.getFileSystem().getSeparator());
+            return pathname.split(UnionFileSystem.SEPARATOR);
     }
 
     @Override
@@ -302,6 +308,6 @@ public class UnionPath implements Path {
 
     @Override
     public String toString() {
-        return (this.absolute ? fileSystem.getSeparator() : "") + String.join(fileSystem.getSeparator(), this.pathParts);
+        return (this.absolute ? UnionFileSystem.SEPARATOR : "") + String.join(UnionFileSystem.SEPARATOR, this.pathParts);
     }
 }
